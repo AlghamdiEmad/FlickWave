@@ -71,7 +71,7 @@ navProfileBtn.addEventListener('click', () => {
 googleLoginBtn.addEventListener('click', async () => {
     const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin }
+        options: { redirectTo: window.location.href }
     });
     if (error) console.error('خطأ في Google:', error.message);
 });
@@ -81,7 +81,7 @@ if (facebookLoginBtn) {
     facebookLoginBtn.addEventListener('click', async () => {
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'facebook',
-            options: { redirectTo: window.location.origin }
+            options: { redirectTo: window.location.href }
         });
         if (error) console.error('خطأ في Facebook:', error.message);
     });
