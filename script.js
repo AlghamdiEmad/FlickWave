@@ -26,7 +26,7 @@ const feedContainer = document.querySelector('.feed-container .container');
 
 let currentUser = null;
 
-// 3. فحص حالة الجلسة
+// 3. فحص حالة الجلسة وقراءة المنشورات
 async function checkAuth() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     currentUser = session ? session.user : null;
@@ -38,6 +38,35 @@ async function checkAuth() {
     } else {
         navProfileBtn.textContent = 'البروفايل';
     }
+
+    // تحميل المنشورات من قاعدة البيانات عند فتح الصفحة
+    loadPosts();
+}
+
+// جلب المنشورات من جدول posts وعرضها
+async function loadPosts() {
+    if (!feedContainer) return;
+    feedContainer.innerHTML = '';
+    
+    const { data: posts, error } = await supabaseClient
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('خطأ في جلب المنشورات:', error.message);
+        return;
+    }
+
+    posts.forEach(post => {
+        const newPost = document.createElement('div');
+        newPost.className = 'feed-card';
+        newPost.innerHTML = `
+            <p style="font-weight: bold; margin-bottom: 5px;">${post.username || 'مستخدم'}</p>
+            <p>${post.content}</p>
+        `;
+        feedContainer.appendChild(newPost);
+    });
 }
 
 // 4. إغلاق جميع النوافذ المنبثقة
@@ -95,28 +124,33 @@ logoutBtn.addEventListener('click', async () => {
     location.reload();
 });
 
-// تأكيد النشر وإضافة الكارت للواجهة
+// تأكيد النشر والحفظ في قاعدة البيانات
 if (submitPostBtn) {
-    submitPostBtn.addEventListener('click', () => {
+    submitPostBtn.addEventListener('click', async () => {
         const text = postContent.value.trim();
         if (!text) {
             alert('الرجاء كتابة شيء قبل النشر');
             return;
         }
 
-        const newPost = document.createElement('div');
-        newPost.className = 'feed-card';
-
         const authorName = currentUser?.user_metadata?.full_name || currentUser?.email || 'مستخدم';
         
-        newPost.innerHTML = `
-            <p style="font-weight: bold; margin-bottom: 5px;">${authorName}</p>
-            <p>${text}</p>
-        `;
+        // إدخال المنشور في Supabase
+        const { error } = await supabaseClient
+            .from('posts')
+            .insert([
+                { username: authorName, content: text }
+            ]);
 
-        feedContainer.appendChild(newPost);
+        if (error) {
+            alert('حدث خطأ أثناء النشر: ' + error.message);
+            console.error(error);
+            return;
+        }
+
         postContent.value = '';
         closeModals();
+        loadPosts();
     });
 }
 
